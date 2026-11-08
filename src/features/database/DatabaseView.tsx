@@ -1,7 +1,7 @@
 /**
  * Database tool window (IDEA's layout): data source → database (PostgreSQL) → schema → `tables` /
- * `views` / `materialized views` / `procedures` / `functions` / `sequences` folders → table →
- * `columns` / `keys` / `foreign keys` / `indexes` / `triggers`,
+ * `views` / `materialized views` / `procedures` / `functions` / `packages` / `sequences` folders →
+ * table → `columns` / `keys` / `foreign keys` / `indexes` / `triggers`,
  * with counts and column types, loaded lazily. Double-click a table to open its data, a data
  * source to open its query console.
  */
@@ -75,10 +75,19 @@ const FOLDER_LABELS: Record<Folder, string> = {
   materializedViews: "materialized views",
   procedures: "procedures",
   functions: "functions",
+  packages: "packages",
   sequences: "sequences",
 };
 
-const FOLDERS: readonly Folder[] = ["tables", "views", "materializedViews", "procedures", "functions", "sequences"];
+const FOLDERS: readonly Folder[] = [
+  "tables",
+  "views",
+  "materializedViews",
+  "procedures",
+  "functions",
+  "packages",
+  "sequences",
+];
 
 function status<T>(key: string, l: Loaded<T> | undefined, map: (v: T) => Node[]): Node[] | undefined {
   if (!l) return undefined;
@@ -158,10 +167,13 @@ export function DatabaseView() {
     (st.objects[tablesKey(id, schema)]?.routines ?? []).filter(shown(id));
   const sequencesOf = (id: string, schema: string) =>
     (st.objects[tablesKey(id, schema)]?.sequences ?? []).filter(shown(id));
-  /** Members of a schema folder: tables / views / materialized views, procedures / functions or sequences. */
+  const packagesOf = (id: string, schema: string) =>
+    (st.objects[tablesKey(id, schema)]?.packages ?? []).filter(shown(id));
+  /** Members of a schema folder: tables / views / materialized views, procedures / functions, packages or sequences. */
   const folderSize = (id: string, schema: string, folder: Folder): number => {
     if (folder === "procedures" || folder === "functions")
       return routinesOf(id, schema).filter((routine) => routineFolder(routine.kind) === folder).length;
+    if (folder === "packages") return packagesOf(id, schema).length;
     if (folder === "sequences") return sequencesOf(id, schema).length;
     return (tablesOf(id, schema) ?? []).filter((t) => tableFolder(t.kind) === folder).length;
   };
@@ -186,6 +198,7 @@ export function DatabaseView() {
     passesTreeFilter(schema, st.treeFilter) ||
     !!tablesOf(id, schema)?.length ||
     routinesOf(id, schema).length > 0 ||
+    packagesOf(id, schema).length > 0 ||
     sequencesOf(id, schema).length > 0;
 
   const schemasOf = (key: string, id: string) =>
@@ -235,6 +248,13 @@ export function DatabaseView() {
               routine,
               ...at,
             }));
+        if (n.folder === "packages")
+          return packagesOf(n.id, n.schema).map((pkg) => ({
+            kind: "package" as const,
+            key: `${n.key}/${pkg.name}`,
+            package: pkg,
+            ...at,
+          }));
         if (n.folder === "sequences")
           return sequencesOf(n.id, n.schema).map((sequence) => ({
             kind: "sequence",
@@ -313,6 +333,8 @@ export function DatabaseView() {
         return FOLDER_LABELS[n.folder];
       case "routine":
         return n.routine.name;
+      case "package":
+        return n.package.name;
       case "sequence":
         return n.sequence.name;
       case "trigger":
@@ -390,6 +412,8 @@ export function DatabaseView() {
       case "table":
         return n.table.kind === "view" ? "db-view" : n.table.kind === "materializedView" ? "db-matview" : "db-table";
       case "routine":
+        return "db-routine";
+      case "package":
         return "db-routine";
       case "sequence":
         return "db-sequence";
