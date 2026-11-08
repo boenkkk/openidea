@@ -6,20 +6,18 @@ wire-compatible products listed in **New ▸ Data Source**. Connections are save
 per project in `.openidea/data-sources.toml`; passwords live outside the project
 (and never in that file).
 
-## Oracle: Oracle Instant Client
+## Oracle
 
-Oracle support uses the Oracle Call Interface, so the Oracle client libraries
-must be installed on the machine. OpenIDEA does not bundle them: install the
-**Oracle Instant Client** for your platform and point the data source at it.
+Oracle connections use the pure-Rust thin driver: **no Oracle client library and
+no ORACLE_HOME are needed**. The driver **requires Oracle Database 19 or later**
+(also tested against 21c and 26ai) and connects directly over the network.
 
-1. Download the _Basic_ (or _Basic Light_) package of Oracle Instant Client
-   19c or later for your OS from
-   <https://www.oracle.com/database/technologies/instant-client/downloads.html>.
-2. Unpack it somewhere stable, then, in the data source's **Options** tab, set
-   **Instant Client** to that directory.
-3. General tab: host, port (1521), and the **service name** (for example
+1. General tab: host, port (1521), and the **service name** (for example
    `ORCLPDB1`) in the Database field. Connect with the schema's user and its
    password.
+2. A full TNS descriptor, or a TNS alias resolved from `tnsnames.ora`
+   (`TNS_ADMIN` or `$ORACLE_HOME/network/admin`), also works in the Database
+   field.
 
 `java.sql`-style URLs also work in the URL field:
 
@@ -27,24 +25,6 @@ must be installed on the machine. OpenIDEA does not bundle them: install the
 oracle://scott:tiger@db.example.com:1521/ORCLPDB1
 jdbc:oracle:thin:@//db.example.com:1521/ORCLPDB1
 ```
-
-A TNS descriptor or alias in the Database field is passed to the client as is.
-
-### Platform notes
-
-- **macOS** — the _Basic_ ZIP for ARM (Apple silicon) or x86-64 must match the
-  app's architecture. Remove the quarantine flag if macOS blocks the libraries:
-  `xattr -dr com.apple.quarantine /opt/oracle/instantclient_23_5`.
-- **Windows** — use the 64-bit package; the app is 64-bit. `PATH` does not have
-  to include the directory when the Options tab names it.
-- **Linux** — install the RPM/DEB or unzip the ZIP; the directory needs the
-  `libclntsh.so` and `libclntshcore.so` libraries (the ZIP's `libaio`-based
-  builds also need the `libaio` package).
-
-Without a working client, Test Connection fails with a clear message
-(`DPI-1047: Cannot locate a 64-bit Oracle Client library…`). If the Options tab
-is empty and `ORACLE_HOME` is not set, the client is looked up on the system
-search path.
 
 ### What Oracle data sources support
 
